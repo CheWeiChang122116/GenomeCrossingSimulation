@@ -1,0 +1,25 @@
+# RecombTag: create an index to show where is recombinant
+# it will be used in "CrossPos"
+# parameter:
+# lnum: loci number of a given chromosome
+# x.pos <- postion of crossing over happened
+RecombTag <- function(lnum, x.pos){
+  outtag <- rep(0, lnum)
+  total <- length(x.pos)
+  coor <- 1:total
+  odd.coor <- coor[which((coor%%2) == 1)]
+  even.coor <- coor[which((coor%%2) != 1)]
+  if(length(odd.coor)!=length(even.coor)){
+    recomb.tag <- cbind(odd.coor, c(even.coor, total + 1))
+    x.pos <- c(x.pos, lnum)
+  }else{
+    recomb.tag <- cbind(odd.coor, even.coor)
+  }
+  if(nrow(recomb.tag)>1){
+    rec.coor <- unlist(apply(recomb.tag, 1, FUN = function(x){(x.pos[x[1]]+1):x.pos[x[2]]}))
+  }else{
+    rec.coor <- (x.pos[recomb.tag[1,1]]+1):x.pos[recomb.tag[1,2]]
+  }
+  outtag[rec.coor] <- 1
+  return(outtag)
+} # RecombTag end
