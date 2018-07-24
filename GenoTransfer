@@ -1,0 +1,62 @@
+# convert data format: seperate genotype into two matrix, which represent the two haploid genome. 
+# the minor and major allele in the matrix will be represented by -1 and 1
+GenoTransfer <- function(genodat, map){
+  
+  nloci <- nrow(map)
+  nl <- nrow(genodat)
+  nchr <- length(unique(map[,1]))
+  gamete1 <- genodat
+  gamete2 <- genodat
+  
+  if(nchr >1 ){
+    nlocibychr  <- table(map[,1]) # calculate the loci number in each chromosome
+  }else{
+    nlocibychr <- nloci
+  }
+  csnloci <- cumsum(nlocibychr)
+  
+  # deal the hetrozygote in RILs
+  AssignH <- function(H.pos){
+    Hhead <- c(1, which(diff(H.pos)!=1)+1)
+    Htail <- c(which(diff(H.pos)!=1), length(H.pos))
+    Hlen <- Htail - Hhead +1
+    if(length(Hhead)==1){
+      Hgeno <- rep(sample(c(-1,1), size = 1, prob = c(0.5,0.5)), Hlen)
+    }else{
+      Hgeno <- unlist(lapply(Hlen,function(x){rep(sample(c(-1,1), size = 1, prob = c(0.5,0.5)), x)}))
+    }
+    return(Hgeno)
+  } # AssignH end
+  edge <- c(1, csnloci[1]) # define work region in the matrix "out"
+  for(i in 1:nchr){
+    
+    if(i!= 1){edge <- c(csnloci[i-1]+1, csnloci[i])}
+    if(is.matrix(genodat)){
+      tempdat <- genodat[,edge[1]:edge[2]]
+      Hgeno1 <- t(apply(tempdat, 1, FUN = function(x){
+        Hpos <- which(x == 0)
+        Htag <- rep(0, nlocibychr[i])
+        Htag[Hpos] <- AssignH(H.pos = Hpos) 
+        return(Htag)
+      }))
+      Hgeno2 <- Hgeno1*(-1)
+      
+      gamete1[,edge[1]:edge[2]] <- gamete1[,edge[1]:edge[2]] + Hgeno1
+      gamete2[,edge[1]:edge[2]] <- gamete2[,edge[1]:edge[2]] + Hgeno2
+    }else{
+      tempdat <- genodat[edge[1]:edge[2]]
+      Htag <- rep(0, nlocibychr[i])
+      Htag[which(tempdat == 0)] <- AssignH(H.pos = which(tempdat == 0))
+      Hgeno1 <- Htag
+      Hgeno2 <- Hgeno1*(-1)
+      
+      gamete1[edge[1]:edge[2]] <- gamete1[edge[1]:edge[2]] + Hgeno1
+      gamete2[edge[1]:edge[2]] <- gamete2[edge[1]:edge[2]] + Hgeno2
+      
+      
+    }
+    
+  }
+  if(any(gamete1 == 0| gamete2 == 0)){stop("Something goes wrong when dealing with heterozygote")}
+  return(list(gamete1, gamete2))
+} # GenoTransfer end
